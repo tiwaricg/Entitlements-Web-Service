@@ -21,6 +21,14 @@ global class Trek_EntitlementsWebservice
 		List<Entitlement> lstEntitlements = new List<Entitlement>();
 		List<Account> lstAccount = new List<Account>();
 		
+		XmlStreamWriter objXmlStreamWriter = new XmlStreamWriter();
+		
+		/* Start the XML document */
+		objXmlStreamWriter.writeStartDocument(null, '1.0'); 
+		
+		/* this will start with <accounts> in XML */
+		objXmlStreamWriter.writeStartElement(null, 'accounts', null); 
+		
 		try
 		{
 			/* Get account whose account Number is matching with parameter */
@@ -33,7 +41,23 @@ global class Trek_EntitlementsWebservice
 										   WHERE AccountNumber =: strAccountNumber])
 				{
 					lstAccount.add(objAccount);
+					
+					/* This will write <account> in the XML file */
+			        objXmlStreamWriter.writeStartElement(null, 'account', null);
+			        
+			        /* Open the tag <Name> */
+			        objXmlStreamWriter.writeStartElement(null, 'Name', null);
+			        
+			        /* Write the value of Name to be send */
+			        objXmlStreamWriter.writeCharacters(objAccount.Name);
+			        
+			        /* close </Name> */
+			        objXmlStreamWriter.writeEndElement();
+			        
+			        /* close </account> */
+			        objXmlStreamWriter.writeEndElement();
 				}
+	   			  objXmlStreamWriter.writeEndElement();
 			}
 			
 			
@@ -57,8 +81,26 @@ global class Trek_EntitlementsWebservice
 												   WHERE Id =: accountIdOfCase])
 						{
 							lstAccount.add(objAccount);
+							
+							/* This will write <account> in the XML file */
+							objXmlStreamWriter.writeStartElement(null, 'account', null);
+					        
+					        /* Open the tag <Name> */
+					        objXmlStreamWriter.writeStartElement(null, 'Name', null);
+					        
+					        /* Write the value of Name to be send */
+					        objXmlStreamWriter.writeCharacters(objAccount.Name);
+					        
+					        /* close </Name> */
+					        objXmlStreamWriter.writeEndElement();
+					        
+					        /* close </account> */
+					        objXmlStreamWriter.writeEndElement();
 						}
+						  objXmlStreamWriter.writeEndElement();
 					}
+					
+					objXmlStreamWriter.writeStartElement(null, 'contacts', null); //this will start with <contacts> in XML
 					
 					/* Iterate over the list of contact related to case account Id */
 					for(Contact objContact : [SELECT Id, 
@@ -71,8 +113,27 @@ global class Trek_EntitlementsWebservice
 						if(strPhoneNumber != null && strPhoneNumber != '' && strPhoneNumber == objContact.Phone)
 						{
 							lstContacts.add(objContact);
+							
+							/* This will write <contact> in the XML file */
+							objXmlStreamWriter.writeStartElement(null, 'contact', null);
+					        
+					        /* Open the tag <Name> */  
+					        objXmlStreamWriter.writeStartElement(null, 'Name', null);
+					        
+					        /* Write the value of Name to be send */
+					        objXmlStreamWriter.writeCharacters(objContact.Name);
+					        
+					        /* close </Name> */
+					        objXmlStreamWriter.writeEndElement();
+					        
+					        /* close </contact> */
+					        objXmlStreamWriter.writeEndElement();
 						}
 					}
+					 objXmlStreamWriter.writeEndElement();
+					
+					/* this will start with <assets> in XML */
+					objXmlStreamWriter.writeStartElement(null, 'assets', null); 
 					
 					/* Iterate over the list of Asset related to case account Id */
 					for(Asset objAsset : [SELECT Id, 
@@ -82,7 +143,26 @@ global class Trek_EntitlementsWebservice
 										   WHERE AccountId =: accountIdOfCase])
 					{
 						lstAssets.add(objAsset);
+						
+						/* This will write <asset> in the XML file */
+						objXmlStreamWriter.writeStartElement(null, 'asset', null);
+				        
+				        /* Open the tag <Name> */ 
+				        objXmlStreamWriter.writeStartElement(null, 'Name', null);
+				        
+				        /* Write the value of Name to be send */
+				        objXmlStreamWriter.writeCharacters(objAsset.Name);
+				        
+				        /* close </Name> */
+				        objXmlStreamWriter.writeEndElement();
+				        
+				        /* close </asset> */ 
+				        objXmlStreamWriter.writeEndElement();
 					}
+					objXmlStreamWriter.writeEndElement();
+					
+					/* this will start with <entitlements> in XML */
+					objXmlStreamWriter.writeStartElement(null, 'entitlements', null); 
 					
 					/* Iterate over the list of Entitlements related to case account Id */
 					for(Entitlement objEntitlement : [SELECT Id, 
@@ -92,9 +172,32 @@ global class Trek_EntitlementsWebservice
 													   WHERE AccountId =: accountIdOfCase])
 					{
 						lstEntitlements.add(objEntitlement);
+						
+						/* This will write <entitlement> in the XML file */
+						objXmlStreamWriter.writeStartElement(null, 'entitlement', null);
+				        
+				        /* Open the tag <Name> */ 
+				        objXmlStreamWriter.writeStartElement(null, 'Name', null);
+				        
+				        /* Write the value of Name to be send */
+				        objXmlStreamWriter.writeCharacters(objEntitlement.Name);
+				        
+				        /* close </Name> */
+				        objXmlStreamWriter.writeEndElement();
+				        
+				        /* close </entitlement> */
+				        objXmlStreamWriter.writeEndElement();
 					}
+					 objXmlStreamWriter.writeEndElement();
 				}
 			}
+			
+			/* close xml document */
+		    objXmlStreamWriter.writeEndDocument();
+		    
+		    /* Get XML document*/
+		    String xmlOutput = objXmlStreamWriter.getXmlString();
+   			objXmlStreamWriter.close();
 			
 			if(lstContacts.isEmpty() && lstAssets.isEmpty() && lstEntitlements.isEmpty() && lstAccount.isEmpty())
 			{
@@ -104,11 +207,7 @@ global class Trek_EntitlementsWebservice
 			}
 			else
 			{
-				/* Adding all the list of Contact, Asset and Entitlement into the Wrraper class */
-				ContactAssetsEntitlementWrapper objContactAssetsEntitlementWrapper = new ContactAssetsEntitlementWrapper(lstContacts, lstAssets, lstEntitlements, lstAccount);
-				
-				String strJSON = JSON.serialize(objContactAssetsEntitlementWrapper);
-				return strJSON;
+				return xmlOutput;
 			}
 		}
 		catch(Exception ex)
@@ -119,27 +218,4 @@ global class Trek_EntitlementsWebservice
 			return objLog.StackTrace__c;
 		}	
 	}
-		
-	/*
-	 @WrapperClassName: ContactAssetsEntitlementWrapper
-     @param: List<Contact>, List<Asset>, List<Entitlement>
-     @Description: Wrraper class to bind list of different objects
-	*/
-	private class ContactAssetsEntitlementWrapper
-	{
-		List<Contact> lstContact;
-		List<Asset> lstAsset;
-		List<Entitlement> lstEntitlement;
-		List<Account> lstAccount;
-		
-		/* Start - Wrapper class Constructor */
-		private ContactAssetsEntitlementWrapper(List<Contact> lstContact, List<Asset> lstAsset, List<Entitlement> lstEntitlement, List<Account> lstAccount)
-		{
-				this.lstContact = lstContact;
-				this.lstAsset = lstAsset;
-				this.lstEntitlement = lstEntitlement;
-				this.lstAccount = lstAccount;
-		}
-		/* End - Wrapper class Constructor */
-	}	
 }
